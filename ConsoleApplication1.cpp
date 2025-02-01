@@ -18,7 +18,9 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
         // https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
         DWORD key = kbStruct->vkCode;
-        std::cout << key << ' ' << kbStruct->dwExtraInfo << '\n';
+        DWORD transKb = (kbStruct->flags >> 7) & 1; // is key up or down
+
+        std::cout << key << ' ' << (transKb == 0 ? "down" : "up") << ' ';
         
         if (key == VK_LWIN) 
         {
@@ -36,7 +38,25 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                 else 
                 {
                     std::cout << "just single press" << '\n';
-                    //keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, 0);
+
+                    INPUT winUpButDoNothing[4] = {
+                        {INPUT_KEYBOARD},
+                        {INPUT_KEYBOARD},
+                        {INPUT_KEYBOARD},
+                        {INPUT_KEYBOARD},
+                    };
+                    winUpButDoNothing[0].ki.wVk = VK_LWIN;
+                    winUpButDoNothing[1].ki.wVk = VK_NUMLOCK;
+
+                    winUpButDoNothing[2].ki.wVk = VK_LWIN;
+                    winUpButDoNothing[2].ki.dwFlags = KEYEVENTF_KEYUP;
+                    winUpButDoNothing[3].ki.wVk = VK_NUMLOCK;
+                    winUpButDoNothing[3].ki.dwFlags = KEYEVENTF_KEYUP;
+
+                    std::cout << "##### here does [WIN + NUM LOCK] to release [WIN] with combination that does nothing\n";
+                    SendInput(_countof(winUpButDoNothing), winUpButDoNothing, sizeof(INPUT));
+                    std::cout << "##### here ends [WIN + NUM LOCK]\n";   
+                    
                     return 1;
                 }
             }
@@ -48,7 +68,8 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
         std::cout << (winKeyDown ? "lwin down" : "lwin up") << '\n';
     }
     // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-callnexthookex
-    return CallNextHookEx(hHook, nCode, wParam, lParam);
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+    //return CallNextHookEx(hHook, nCode, wParam, lParam);
 }
 
 int main()
