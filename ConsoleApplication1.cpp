@@ -9,7 +9,7 @@ int messagesWasWhileDown_VK_LWIN = 0;
 bool altLeftKeyDown = false;
 int messagesWasWhileDown_VK_LALT = 0;
 
-/*
+/* ÿ õîòåë ñäåëàòü åùå ïðîùå íî óõîäèò â öèêë è ñäåëàòü â èòîãå êîðî÷å íå ïîëó÷èëîñü, ýòî ìîæíî ïðîñòî óäàëèòü
 struct KeyData {
     DWORD key;
     const char* view;
@@ -26,7 +26,7 @@ struct KeyData {
 KeyData checkKeys[2] = {
     {VK_LWIN, "L_WIN", false, 0},
     {VK_LMENU, "L_ALT", false, 0},
-};
+}; äî ñþäà
 */
 
 int SkipKey(DWORD key, const char* keyView, bool* checkerDown, int* counter, WPARAM* wParam)
@@ -99,18 +99,52 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
         DWORD transKb = (kbStruct->flags >> 7) & 1; // is key up or down // doesnt have meaning because there is just wParam == WM_KEYDOWN
         std::cout << key << ' ' << (transKb == 0 ? "down" : "up") << ' ';
 
+        //
+        // Â ÏÐÎÖÅÄÓÐÅ SkipKey ÅÑÒÜ 5 ÏÀÐÀÌÅÒÐÎÂ:
+        // 1: ÑÀÌÀ ÊËÀÂÈØÀ ÊÀÊ ÇÄÅÑÜ https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+        // 2: ÏÐÎÑÒÎ ÒÅÊÑÒÎÂÛÉ ÂÈÄ ÊËÀÂÈØÈ ÄËß ÎÒÎÁÐÀÆÅÍÈß Â ÊÎÍÑÎËÈ, ÌÎÆÍÎ ÂÛÐÅÇÀÒÜ ÂÌÅÑÒÅ Ñ ÂÛÂÎÄÎÌ, ÅÑËÈ ÍÅ ÒÐÅÁÓÅÒÑß
+        // 3: ÓÊÀÇÀÒÅËÜ ÍÀ bool ÏÅÐÅÌÅÍÍÓÞ, ÍÀ ÊÀÆÄÓÞ ÊËÀÂÈØÓ ÑÂÎß ÎÒÄÅËÜÍÀß, 
+        // 4: ÓÊÀÇÀÒÅËÜ ÍÀ int ÏÅÐÅÌÅÍÍÓÞ, ÍÀ ÊÀÆÄÓÞ ÊËÀÂÈØÓ ÑÂÎß ÎÒÄÅËÜÍÀß
+        //    ÝÒÎ Ñ×ÅÒ×ÈÊ, ÑÊÎËÜÊÎ ÊËÀÂÈØ ÍÅ ÒÀÊÈÕ ÊÀÊ Â ÏÀÐÀÌÅÒÐÅ 1 ÁÛËÎ ÍÀÆÀÒÎ ÏÎÊÀ
+        //    ÁÛËÀ ÇÀÆÀÒÀ ÊËÀÂÈØÀ ÈÇ ÏÀÐÀÌÅÒÐÀ 1
+        //    Â ÂÈÍÄÅ ß ÇÀÌÅÒÈË, ×ÒÎ ÊÎÌÁÈÍÀÖÈß ÝÒÎ ÒÎÃÄÀ ÊÎÃÄÀ ÄÎ ÎÒÆÀÒÈß ÊËÀÂÈØÈ ÁÛËÈ ÇÀÆÀÒÛ ÅÙÅ È ÄÐÓÃÈÅ
+        //    ÏÎÝÒÎÌÓ ÒÐÅÁÓÅÒÑß ÎÒÑËÅÆÈÂÀÍÈÅ ÑÊÎËÜÊÎ ÐÀÇ ÁÛËÈ ÍÀÆÀÒÛ ÄÐÓÃÈÅ ÊËÀÂÈØÈ
+        // 
+        //    À ÒÀÊÆÅ ÊÎÃÄÀ ÊËÀÂÈØÀ ÇÀÆÀÒÀ ×ÒÎÁÛ ÅÅ ÎÒÆÀÒÜ ÌÎÆÍÎ ÈÑÏÎËÜÇÎÂÀÒÜ ËÞÁÓÞ ÊÎÌÁÈÍÀÖÈÞ ÊËÀÂÈØ
+        //    ÊÎÒÎÐÀß ÁÓÄÅÒ ÈÑÏÎËÜÇÎÂÀÒÜ ÝÒÓ
+        // 5: ÓÊÀÇÀÒÅËÜ ÍÀ ÑÒÐÓÊÒÓÐÓ WPARAM, ÄÎÊÓÌÅÍÒÀÖÈß ÇÄÅÑÜ https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-kbdllhookstruct
+        // 
+        // Â ÏÐÎÖÅÄÓÐÅ AfterAnyKeyDown 6 ÏÀÐÀÌÅÒÐÎÂ, ÂÑÅ ÈÇ ÊÎÒÎÐÛÕ ÒÀÊÈÅ ÆÅ ÊÀÊ È Â ÏÅÐÂÎÉ ÔÓÍÊÖÈÈ ÍÎ ÒÎËÜÊ0
+        // 1: 1 ÏÀÐÀÌÅÒÐ ÝÒÎ ÒÀ ÆÅ ÊËÀÂÈØÀ 
+        // 2: À 2 ÏÀÐÀÌÅÒÐ ÂÎÎÁÙÅ ÂÑÅ ÊËÀÂÈØÈ
+        // 
+        // ÏÅÐÅÄ ÂÛÏÎËÍÅÍÈÅÌ ÏÅÐÂÎÉ ÏÐÎÖÅÄÓÐÛ ÈÄÅÒ ÏÐÎÂÅÐÊÀ if (key == VK_LWIN)
+        // ÏÎÝÒÎÌÓ ÏÅÐÂÛÉ ÏÀÐÀÌÅÒÐ ÏÅÐÅÄÀÍÍÛÉ Â SkipKey ÂÑÅÃÄÀ È ÁÓÄÅÒ ÇÀÕÂÀÒÛÂÀÅÌÎÉ ÊËÀÂÈØÅÉ
+        // È ÂÛÕÎÄÈÒ ×ÒÎ ÏÐÎÖÅÄÓÐÀ SkipKey ÂÛÇÛÂÀÅÒÑß ÒÎËÜÊÎ ÎÄÈÍ ÐÀÇ ÏÐÈ ÎÒÆÀÒÈÈ, 
+        // ÃÄÅ SkipKey(...) == 1 ÎÇÍÀ×ÀÅÒ ÎÒÀÒÈÅ, À == 0 ÍÅ Ó×ÈÒÛÂÀÅÒÑß
+        // À ÏÐÎÖÅÄÓÐÀ AfterAnyKeyDown ÄÎËÆÍÀ ÂÛÇÛÂÀÒÜÑß ÂÑÅÃÄÀ
+        // 
+        // ×ÒÎÁÛ ÓÁÐÀÒÜ ÇÀÕÂÀÒ ÊËÀÂÈØÈ WIN ÍÀÄÎ ÓÄÀËÈÒÜ ÎÒ ÑÞÄÀ
         // L_WIN
         if (key == VK_LWIN)
             if (SkipKey(key, "L_WIN", &winKeyDown, &messagesWasWhileDown_VK_LWIN, &wParam) == 1)
                 return 1;
         AfterAnyKeyDown(VK_LWIN, key, "L_WIN", &winKeyDown, &messagesWasWhileDown_VK_LWIN, &wParam);
         // L_WIN
+        // ÄÎ ÑÞÄÀ
+        // 
+
+
+        //
+        // ×ÒÎÁÛ ÓÁÐÀÒÜ ÇÀÕÂÀÒ ÊËÀÂÈØÈ ËÅÂÛÉ ÀËÜÒ ÍÀÄÎ ÓÄÀËÈÒÜ ÎÒ ÑÞÄÀ
         // L_ALT
         if (key == VK_LMENU)
             if (SkipKey(key, "L_ALT", &altLeftKeyDown, &messagesWasWhileDown_VK_LALT, &wParam) == 1)
                 return 1;
         AfterAnyKeyDown(VK_LMENU, key, "L_ALT", &altLeftKeyDown, &messagesWasWhileDown_VK_LALT, &wParam);
         // L_ALT
+        // ÄÎ ÑÞÄÀ
+        // 
     }
     // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-callnexthookex
     return CallNextHookEx(NULL, nCode, wParam, lParam);
